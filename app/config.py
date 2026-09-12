@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     APP_NAME: str = "ToDo API"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = "2.0.0"
 
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306

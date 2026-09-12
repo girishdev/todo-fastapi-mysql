@@ -10,8 +10,9 @@ from app.routes.tasks import router as tasks_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create database tables if they don't exist
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(
+        bind=engine
+    )
 
     yield
 
@@ -19,7 +20,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="Simple ToDo CRUD API using FastAPI, SQLAlchemy and MySQL",
+    description=(
+        "ToDo REST API using FastAPI, "
+        "SQLAlchemy and MySQL"
+    ),
     lifespan=lifespan,
 )
 
@@ -36,7 +40,7 @@ app.include_router(
 )
 def root():
     return {
-        "message": "ToDo API is running"
+        "message": "ToDo API V2 is running"
     }
 
 
@@ -46,5 +50,6 @@ def root():
 )
 def health_check():
     return {
-        "status": "healthy"
+        "status": "healthy",
+        "version": settings.APP_VERSION,
     }

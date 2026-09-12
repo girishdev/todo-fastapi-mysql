@@ -1,13 +1,23 @@
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
-from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
+from fastapi import (
+    APIRouter,
+    Depends,
+    Path,
+    Query,
+    Response,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Task
-from app.schemas import TaskCreate, TaskResponse, TaskUpdate
+from app.repositories import TaskRepository
+from app.schemas import (
+    TaskCreate,
+    TaskListResponse,
+    TaskPatch,
+    TaskResponse,
+    TaskUpdate,
+)
+from app.services import TaskService
 
 
 router = APIRouter(
@@ -16,24 +26,17 @@ router = APIRouter(
 )
 
 
-def get_task_or_404(
-    task_id: int,
-    db: Session,
-) -> Task:
-    task = db.get(Task, task_id)
+def get_task_service(
+    db: Session = Depends(get_db),
+) -> TaskService:
+    repository = TaskRepository(
+        db
+    )
 
-    if task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
+    return TaskService(
+        repository
+    )
 
-    return task
-
-
-# ---------------------------------------------------------
-# CREATE TASK
-# ---------------------------------------------------------
 
 @router.post(
     "",
@@ -42,164 +45,134 @@ def get_task_or_404(
 )
 def create_task(
     task_data: TaskCreate,
-    db: Session = Depends(get_db),
+    service: TaskService = Depends(
+        get_task_service
+    ),
 ):
-    try:
-        task = Task(
-            title=task_data.title,
-            description=task_data.description,
-            is_completed=task_data.is_completed,
-            due_date=task_data.due_date,
-        )
+    return service.create_task(
+        task_data
+    )
 
-        db.add(task)
-        db.commit()
-        db.refresh(task)
-
-        return task
-
-    except SQLAlchemyError:
-        db.rollback()
-
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to create task",
-        )
-
-
-# ---------------------------------------------------------
-# READ ALL TASKS
-# ---------------------------------------------------------
 
 @router.get(
     "",
-    response_model=list[TaskResponse],
+    response_model=TaskListResponse,
 )
 def get_tasks(
-    skip: Annotated[
-        int,
-        Query(ge=0)
-    ] = 0,
+    page: int = Query(
+        default=1,
+        ge=1,
+    ),
 
-    limit: Annotated[
-        int,
-        Query(ge=1, le=100)
-    ] = 100,
+    page_size: int = Query(
+        default=10,
+        ge=1,
+        le=100,
+    ),
 
-    db: Session = Depends(get_db),
+    is_completed: bool | None = Query(
+        default=None,
+    ),
+
+    search: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=255,
+    ),
+
+    service: TaskService = Depends(
+        get_task_service
+    ),
 ):
-    statement = (
-        select(Task)
-        .order_by(Task.id.desc())
-        .offset(skip)
-        .limit(limit)
+    return service.get_tasks(
+        page=page,
+        page_size=page_size,
+        is_completed=is_completed,
+        search=search,
     )
 
-    tasks = db.scalars(statement).all()
-
-    return tasks
-
-
-# ---------------------------------------------------------
-# READ SINGLE TASK
-# ---------------------------------------------------------
 
 @router.get(
     "/{task_id}",
     response_model=TaskResponse,
 )
 def get_task(
-    task_id: Annotated[
-        int,
-        Path(gt=0)
-    ],
+    task_id: int = Path(
+        ...,
+        gt=0,
+    ),
 
-    db: Session = Depends(get_db),
+    service: TaskService = Depends(
+        get_task_service
+    ),
 ):
-    task = get_task_or_404(
-        task_id=task_id,
-        db=db,
+    return service.get_task(
+        task_id
     )
 
-    return task
-
-
-# ---------------------------------------------------------
-# UPDATE TASK
-# ---------------------------------------------------------
 
 @router.put(
     "/{task_id}",
     response_model=TaskResponse,
 )
 def update_task(
-    task_id: Annotated[
-        int,
-        Path(gt=0)
-    ],
-
     task_data: TaskUpdate,
 
-    db: Session = Depends(get_db),
+    task_id: int = Path(
+        ...,
+        gt=0,
+    ),
+
+    service: TaskService = Depends(
+        get_task_service
+    ),
 ):
-    task = get_task_or_404(
-        task_id=task_id,
-        db=db,
+    return service.update_task(
+        task_id,
+        task_data,
     )
 
-    try:
-        task.title = task_data.title
-        task.description = task_data.description
-        task.is_completed = task_data.is_completed
-        task.due_date = task_data.due_date
 
-        db.commit()
-        db.refresh(task)
+@router.patch(
+    "/{task_id}",
+    response_model=TaskResponse,
+)
+def patch_task(
+    task_data: TaskPatch,
 
-        return task
+    task_id: int = Path(
+        ...,
+        gt=0,
+    ),
 
-    except SQLAlchemyError:
-        db.rollback()
+    service: TaskService = Depends(
+        get_task_service
+    ),
+):
+    return service.patch_task(
+        task_id,
+        task_data,
+    )
 
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to update task",
-        )
-
-
-# ---------------------------------------------------------
-# DELETE TASK
-# ---------------------------------------------------------
 
 @router.delete(
     "/{task_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_200_OK,
 )
 def delete_task(
-    task_id: Annotated[
-        int,
-        Path(gt=0)
-    ],
+    task_id: int = Path(
+        ...,
+        gt=0,
+    ),
 
-    db: Session = Depends(get_db),
+    service: TaskService = Depends(
+        get_task_service
+    ),
 ):
-    task = get_task_or_404(
-        task_id=task_id,
-        db=db,
+    service.delete_task(
+        task_id
     )
 
-    try:
-        db.delete(task)
-        db.commit()
-
-        return Response(
-            status_code=status.HTTP_204_NO_CONTENT
-        )
-
-    except SQLAlchemyError:
-        db.rollback()
-
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to delete task",
-        )
+    return {
+    "message": "Task deleted successfully"
+    }
