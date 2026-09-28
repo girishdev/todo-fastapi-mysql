@@ -1,6 +1,11 @@
-fastapi
-uvicorn[standard]
-SQLAlchemy>=2.0,<2.1
-PyMySQL
-pydantic-settings
-cryptography
+fastapi # Main web framework used to build REST APIs
+uvicorn[standard] # Web server that runs the FastAPI application
+SQLAlchemy>=2.0,<2.1 # ORM used to communicate with MySQL
+PyMySQL # MySQL database driver used by SQLAlchemy
+pydantic-settings # Reads configuration such as DB credentials from .env
+cryptography # Required/supporting dependency for some MySQL authentication mechanisms
+
+PyJWT # Generate and validate JWT
+pwdlib[argon2] # Secure password hashing
+email-validator # Validate EmailStr
+python-multipart # OAuth2 login form handling
