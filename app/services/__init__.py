@@ -1,3 +1,13 @@
-from app.services.task_service import TaskService
+from app.services.auth_service import (
+    AuthService,
+)
 
-__all__ = ["TaskService"]
+from app.services.task_service import (
+    TaskService,
+)
+
+
+__all__ = [
+    "AuthService",
+    "TaskService",
+]

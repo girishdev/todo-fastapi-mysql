@@ -3,19 +3,24 @@ from fastapi import (
     Depends,
     Path,
     Query,
-    Response,
     status,
 )
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.repositories import TaskRepository
+from app.models import User
+from app.repositories import (
+    TaskRepository,
+)
 from app.schemas import (
     TaskCreate,
     TaskListResponse,
     TaskPatch,
     TaskResponse,
     TaskUpdate,
+)
+from app.security.dependencies import (
+    get_current_user,
 )
 from app.services import TaskService
 
@@ -27,8 +32,11 @@ router = APIRouter(
 
 
 def get_task_service(
-    db: Session = Depends(get_db),
+    db: Session = Depends(
+        get_db
+    ),
 ) -> TaskService:
+
     repository = TaskRepository(
         db
     )
@@ -41,16 +49,25 @@ def get_task_service(
 @router.post(
     "",
     response_model=TaskResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=(
+        status.HTTP_201_CREATED
+    ),
 )
 def create_task(
     task_data: TaskCreate,
+
+    current_user: User = Depends(
+        get_current_user
+    ),
+
     service: TaskService = Depends(
         get_task_service
     ),
 ):
+
     return service.create_task(
-        task_data
+        task_data=task_data,
+        user_id=current_user.id,
     )
 
 
@@ -80,11 +97,17 @@ def get_tasks(
         max_length=255,
     ),
 
+    current_user: User = Depends(
+        get_current_user
+    ),
+
     service: TaskService = Depends(
         get_task_service
     ),
 ):
+
     return service.get_tasks(
+        user_id=current_user.id,
         page=page,
         page_size=page_size,
         is_completed=is_completed,
@@ -102,12 +125,18 @@ def get_task(
         gt=0,
     ),
 
+    current_user: User = Depends(
+        get_current_user
+    ),
+
     service: TaskService = Depends(
         get_task_service
     ),
 ):
+
     return service.get_task(
-        task_id
+        task_id=task_id,
+        user_id=current_user.id,
     )
 
 
@@ -123,13 +152,19 @@ def update_task(
         gt=0,
     ),
 
+    current_user: User = Depends(
+        get_current_user
+    ),
+
     service: TaskService = Depends(
         get_task_service
     ),
 ):
+
     return service.update_task(
-        task_id,
-        task_data,
+        task_id=task_id,
+        user_id=current_user.id,
+        task_data=task_data,
     )
 
 
@@ -145,13 +180,19 @@ def patch_task(
         gt=0,
     ),
 
+    current_user: User = Depends(
+        get_current_user
+    ),
+
     service: TaskService = Depends(
         get_task_service
     ),
 ):
+
     return service.patch_task(
-        task_id,
-        task_data,
+        task_id=task_id,
+        user_id=current_user.id,
+        task_data=task_data,
     )
 
 
@@ -165,14 +206,21 @@ def delete_task(
         gt=0,
     ),
 
+    current_user: User = Depends(
+        get_current_user
+    ),
+
     service: TaskService = Depends(
         get_task_service
     ),
 ):
+
     service.delete_task(
-        task_id
+        task_id=task_id,
+        user_id=current_user.id,
     )
 
     return {
-    "message": "Task deleted successfully"
+        "message":
+        "Task deleted successfully"
     }
