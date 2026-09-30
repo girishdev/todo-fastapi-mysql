@@ -47,6 +47,13 @@ class Task(Base):
         nullable=True,
     )
 
+    priority: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="MEDIUM",
+        server_default="MEDIUM",
+    )
+
     is_completed: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

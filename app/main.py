@@ -21,18 +21,6 @@ from app.routes.users import (
 )
 
 
-@asynccontextmanager
-async def lifespan(
-    app: FastAPI,
-):
-
-    Base.metadata.create_all(
-        bind=engine
-    )
-
-    yield
-
-
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
@@ -41,7 +29,6 @@ app = FastAPI(
         "using FastAPI, SQLAlchemy, "
         "JWT and MySQL"
     ),
-    lifespan=lifespan,
 )
 
 
